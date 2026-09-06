@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const fake=await import(pathToFileURL(process.argv[2]+'/build/esm/index.js'));globalThis.indexedDB=fake.indexedDB;globalThis.IDBKeyRange=fake.IDBKeyRange;
+const db=await import('../dist/db.mjs');await db.openDB();await db.put('projects',{id:'test',count:0});const blob=new Blob(['image']);
+for(let i=0;i<999;i++)await db.addPhoto('test',{id:'p'+i,name:'image'+i,hash:'hash'+i},blob,blob);
+const race=await Promise.allSettled([db.addPhoto('test',{id:'p999',hash:'hash999'},blob,blob),db.addPhoto('test',{id:'p1000',hash:'hash1000'},blob,blob)]);
+assert.equal(race.filter(r=>r.status==='fulfilled').length,1);assert.equal((await db.all('photos','test')).length,1000);assert.equal((await db.get('projects','test')).count,1000);await assert.rejects(()=>db.addPhoto('test',{id:'duplicate',hash:'hash0'},blob,blob),{message:'DUPLICATE'});assert.equal((await db.all('photos','test')).length,1000);
+await db.put('features',{id:'f0',photoId:'p0',project:'test'});await db.put('features',{id:'f1',photoId:'p1',project:'test'});await db.put('states',{id:'test',state:{stage:'dense'}});await db.put('results',{id:'test',result:'old'});await db.put('chunks',{id:'chunk',project:'test'});
+await db.deletePhotos('test',['p0']);assert.equal((await db.all('photos','test')).length,999);assert.equal(await db.get('features','f0'),undefined);assert.ok(await db.get('features','f1'));assert.equal(await db.get('states','test'),undefined);assert.equal(await db.get('results','test'),undefined);assert.equal((await db.all('chunks','test')).length,0);assert.equal((await db.get('projects','test')).count,999);
+await db.addPhoto('test',{id:'replacement',hash:'replacement'},blob,blob);assert.equal((await db.all('photos','test')).length,1000);console.log('PASS: 1,000 photos, concurrent overflow rejected, duplicates rejected, deletion and state invalidation.');

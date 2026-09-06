@@ -1,0 +1,9 @@
+node_modules/
+*.zip
+.env*
+!*.example
+.DS_Store
+.openai/
+pocketscan-fixtures/
+__pycache__/
+*.pyc
